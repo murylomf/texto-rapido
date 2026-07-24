@@ -22,12 +22,6 @@ Você só precisa hospedar 2 arquivos: `index.html` e `qrcode.min.js`.
 4. Vá em **Settings → Pages**, em "Branch" escolha `main` e clique **Save**.
 5. Em ~1 minuto seu app estará em `https://SEU-USUARIO.github.io/texto-rapido/`.
 
-### Opção B — Netlify Drop
-
-1. Acesse [app.netlify.com/drop](https://app.netlify.com/drop).
-2. Arraste a pasta `texto-phone-pc` inteira para a página.
-3. Pronto — a Netlify gera um link tipo `https://algum-nome.netlify.app`.
-
 ## Como usar
 
 1. **No PC:** abra o link do app. Um canal secreto é criado automaticamente.
