@@ -27,10 +27,10 @@ Você só precisa hospedar 2 arquivos: `index.html` e `qrcode.min.js`.
 ## Como usar
 
 1. **No PC:** abra o link do app. Um canal secreto é criado automaticamente.
-2. Clique em **"Conectar aparelho"** para mostrar o QR code.
-3. **No iPhone:** aponte a câmera para o QR code e abra o link.
+2. Clique em **"Conectar aparelho"** e copie o link do canal.
+3. **No iPhone:** abra esse mesmo link (mande para você mesmo por e-mail/AirDrop uma única vez, ou digite).
 4. No iPhone, toque em **Compartilhar → Adicionar à Tela de Início** — vira um ícone de app, sem precisar abrir o Safari toda vez.
-5. Digite no celular → aparece no PC (e cada mensagem tem botão **Copiar**).
+5. Digite no celular → aparece no PC (e cada mensagem tem botão **Copiar**). Use 📎 para fotos e documentos.
 
 Dicas:
 

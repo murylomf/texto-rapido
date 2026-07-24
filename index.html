@@ -237,7 +237,7 @@
   <header>
     <h1>📋 Texto Rápido</h1>
     <span id="status"><span class="dot"></span><span id="status-text">conectando…</span></span>
-    <button id="toggle-pairing" title="Mostrar QR code para conectar outro aparelho">Conectar aparelho</button>
+    <button id="toggle-pairing" title="Mostrar o link para conectar outro aparelho">Conectar aparelho</button>
     <button id="new-channel" title="Gera um novo código secreto (desconecta os aparelhos antigos)">Novo canal</button>
   </header>
 
@@ -303,13 +303,17 @@
 
   // ---- painel de pareamento / QR ----
   document.getElementById('share-link').value = shareUrl;
-  try {
-    var qr = qrcode(0, 'M');
-    qr.addData(shareUrl);
-    qr.make();
-    document.getElementById('qr').innerHTML = qr.createImgTag(5, 8);
-  } catch (e) {
-    document.getElementById('qr').textContent = '';
+  // o QR é opcional: só renderiza se o elemento #qr existir na página
+  var qrEl = document.getElementById('qr');
+  if (qrEl && typeof qrcode !== 'undefined') {
+    try {
+      var qr = qrcode(0, 'M');
+      qr.addData(shareUrl);
+      qr.make();
+      qrEl.innerHTML = qr.createImgTag(5, 8);
+    } catch (e) {
+      qrEl.textContent = '';
+    }
   }
 
   document.getElementById('toggle-pairing').addEventListener('click', function () {
