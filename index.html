@@ -175,6 +175,51 @@
     max-height: 140px;
   }
   footer textarea:focus { outline: 2px solid var(--accent); border-color: transparent; }
+  #attach {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-size: 1rem;
+    cursor: pointer;
+    flex-shrink: 0;
+    min-width: 48px;
+  }
+  #attach:hover { border-color: var(--accent); }
+  #attach:disabled { opacity: .6; cursor: default; font-size: .8rem; }
+  .msg img.preview {
+    display: block;
+    max-width: 100%;
+    max-height: 320px;
+    border-radius: 8px;
+  }
+  .file-card {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .file-card .icon { font-size: 1.7rem; }
+  .file-card .name {
+    font-size: .9rem;
+    word-break: break-all;
+  }
+  .file-card .info {
+    font-size: .72rem;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+  .msg a.download {
+    display: inline-block;
+    border: 1px solid var(--border);
+    color: var(--accent);
+    border-radius: 6px;
+    padding: 3px 8px;
+    font-size: .72rem;
+    text-decoration: none;
+    flex-shrink: 0;
+  }
+  .msg a.download:hover { border-color: var(--accent); }
   #send {
     background: var(--accent);
     color: var(--accent-text);
@@ -207,12 +252,14 @@
   <main id="messages">
     <div class="empty-hint" id="empty-hint">
       Nenhuma mensagem ainda.<br>
-      Digite algo abaixo — aparece na hora em todos os aparelhos conectados a este canal.<br>
-      As mensagens ficam disponíveis por ~12 horas.
+      Digite algo abaixo (ou use 📎 para enviar imagem/documento) — aparece na hora em todos os aparelhos conectados.<br>
+      Texto fica disponível por ~12 h; arquivos, por ~3 h (limite de 15 MB).
     </div>
   </main>
 
   <footer>
+    <button id="attach" title="Enviar imagem ou documento (até 15 MB)">📎</button>
+    <input type="file" id="file" hidden>
     <textarea id="input" rows="1" placeholder="Digite o texto…"></textarea>
     <button id="send">Enviar</button>
   </footer>
@@ -296,7 +343,59 @@
     return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
   }
 
-  function addMessage(id, text, timeSec, isMine) {
+  function fmtSize(bytes) {
+    if (typeof bytes !== 'number') return '';
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1048576) return Math.round(bytes / 1024) + ' KB';
+    return (bytes / 1048576).toFixed(1) + ' MB';
+  }
+
+  function fileCard(att) {
+    var card = document.createElement('div');
+    card.className = 'file-card';
+    var icon = document.createElement('span');
+    icon.className = 'icon';
+    icon.textContent = '📄';
+    var box = document.createElement('div');
+    var name = document.createElement('div');
+    name.className = 'name';
+    name.textContent = att.name || 'arquivo';
+    var info = document.createElement('div');
+    info.className = 'info';
+    var size = fmtSize(att.size);
+    info.textContent = (size ? size + ' · ' : '') + 'disponível por ~3 h';
+    box.appendChild(name);
+    box.appendChild(info);
+    card.appendChild(icon);
+    card.appendChild(box);
+    return card;
+  }
+
+  function renderAttachment(att) {
+    var wrap = document.createElement('div');
+    if (att.type && att.type.indexOf('image/') === 0) {
+      var link = document.createElement('a');
+      link.href = att.url;
+      link.target = '_blank';
+      link.rel = 'noopener';
+      var img = document.createElement('img');
+      img.className = 'preview';
+      img.alt = att.name || '';
+      img.loading = 'lazy';
+      img.onerror = function () {
+        // ex.: HEIC do iPhone, que o navegador do PC não exibe
+        wrap.replaceChild(fileCard(att), link);
+      };
+      img.src = att.url;
+      link.appendChild(img);
+      wrap.appendChild(link);
+    } else {
+      wrap.appendChild(fileCard(att));
+    }
+    return wrap;
+  }
+
+  function addMessage(id, text, timeSec, isMine, att) {
     if (id && seen[id]) return;
     if (id) seen[id] = true;
     $emptyHint.style.display = 'none';
@@ -305,32 +404,52 @@
     var div = document.createElement('div');
     div.className = 'msg' + (isMine ? ' mine' : '');
 
-    var textEl = document.createElement('div');
-    textEl.className = 'text';
-    textEl.textContent = text;
+    if (att && att.url) div.appendChild(renderAttachment(att));
+
+    // quando só há anexo, o ntfy gera um texto automático — não duplicar
+    var showText = text && !(att && (text === att.name || text.indexOf('You received a file') === 0));
+    if (showText) {
+      var textEl = document.createElement('div');
+      textEl.className = 'text';
+      textEl.textContent = text;
+      div.appendChild(textEl);
+    }
 
     var meta = document.createElement('div');
     meta.className = 'meta';
     var time = document.createElement('span');
     time.className = 'time';
     time.textContent = fmtTime(timeSec);
-    var copy = document.createElement('button');
-    copy.className = 'copy';
-    copy.textContent = 'Copiar';
-    copy.addEventListener('click', function () {
-      navigator.clipboard.writeText(text).then(function () {
-        copy.textContent = 'Copiado ✓';
-        copy.classList.add('done');
-        setTimeout(function () {
-          copy.textContent = 'Copiar';
-          copy.classList.remove('done');
-        }, 1500);
-      });
-    });
     meta.appendChild(time);
-    meta.appendChild(copy);
 
-    div.appendChild(textEl);
+    if (att && att.url) {
+      var dl = document.createElement('a');
+      dl.className = 'download';
+      dl.href = att.url;
+      dl.download = att.name || '';
+      dl.target = '_blank';
+      dl.rel = 'noopener';
+      dl.textContent = 'Baixar';
+      meta.appendChild(dl);
+    }
+
+    if (showText) {
+      var copy = document.createElement('button');
+      copy.className = 'copy';
+      copy.textContent = 'Copiar';
+      copy.addEventListener('click', function () {
+        navigator.clipboard.writeText(text).then(function () {
+          copy.textContent = 'Copiado ✓';
+          copy.classList.add('done');
+          setTimeout(function () {
+            copy.textContent = 'Copiar';
+            copy.classList.remove('done');
+          }, 1500);
+        });
+      });
+      meta.appendChild(copy);
+    }
+
     div.appendChild(meta);
     if (id) elById[id] = div;
     $messages.appendChild(div);
@@ -338,7 +457,8 @@
 
     // notificação no PC quando a aba está em segundo plano
     if (!isMine && document.hidden && typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-      try { new Notification('Texto Rápido', { body: text.slice(0, 120) }); } catch (e) {}
+      var body = att ? '📎 ' + (att.name || 'arquivo') : (text || '').slice(0, 120);
+      try { new Notification('Texto Rápido', { body: body }); } catch (e) {}
     }
   }
 
@@ -366,8 +486,9 @@
     es.onmessage = function (e) {
       var data;
       try { data = JSON.parse(e.data); } catch (err) { return; }
-      if (data.event !== 'message' || !data.message) return;
-      addMessage(data.id, data.message, data.time, !!mine[data.id]);
+      if (data.event !== 'message') return;
+      if (!data.message && !data.attachment) return;
+      addMessage(data.id, data.message, data.time, !!mine[data.id], data.attachment);
     };
   }
   connect();
@@ -401,6 +522,75 @@
         $input.focus();
       });
   }
+
+  // ---- envio de arquivo (imagem/documento) ----
+  var MAX_FILE = 15 * 1024 * 1024; // limite do ntfy.sh
+  var $attach = document.getElementById('attach');
+  var $file = document.getElementById('file');
+
+  function sanitizeFilename(name) {
+    // o header Filename precisa ser ASCII: remove acentos e troca o resto por "_"
+    var s = (name || '').normalize('NFKD');
+    var out = '';
+    for (var i = 0; i < s.length; i++) {
+      var c = s.charCodeAt(i);
+      if (c >= 768 && c <= 879) continue; // marcas de acento geradas pelo NFKD
+      out += (c < 128 && /[A-Za-z0-9._-]/.test(s[i])) ? s[i] : '_';
+    }
+    out = out.replace(/_+/g, '_');
+    return out.slice(-100) || 'arquivo';
+  }
+
+  function uploadFile(f) {
+    var xhr = new XMLHttpRequest();
+    xhr.open('PUT', SERVER + '/' + topic);
+    xhr.setRequestHeader('Filename', sanitizeFilename(f.name));
+    $attach.disabled = true;
+    $attach.textContent = '0%';
+
+    function reset() {
+      $attach.disabled = false;
+      $attach.textContent = '📎';
+    }
+
+    xhr.upload.onprogress = function (e) {
+      if (e.lengthComputable) $attach.textContent = Math.round(e.loaded / e.total * 100) + '%';
+    };
+    xhr.onload = function () {
+      reset();
+      if (xhr.status >= 200 && xhr.status < 300) {
+        var data;
+        try { data = JSON.parse(xhr.responseText); } catch (e) { return; }
+        mine[data.id] = true;
+        if (seen[data.id] && elById[data.id]) {
+          elById[data.id].classList.add('mine');
+        } else {
+          addMessage(data.id, data.message, data.time || Math.floor(Date.now() / 1000), true, data.attachment);
+        }
+      } else if (xhr.status === 413) {
+        alert('Arquivo grande demais para o servidor (limite ~15 MB).');
+      } else {
+        alert('Não foi possível enviar o arquivo (HTTP ' + xhr.status + '). Tente de novo.');
+      }
+    };
+    xhr.onerror = function () {
+      reset();
+      alert('Falha de rede ao enviar o arquivo. Verifique a conexão.');
+    };
+    xhr.send(f);
+  }
+
+  $attach.addEventListener('click', function () { $file.click(); });
+  $file.addEventListener('change', function () {
+    var f = $file.files[0];
+    $file.value = '';
+    if (!f) return;
+    if (f.size > MAX_FILE) {
+      alert('Arquivo muito grande (' + fmtSize(f.size) + '). O limite é 15 MB.');
+      return;
+    }
+    uploadFile(f);
+  });
 
   $send.addEventListener('click', send);
   $input.addEventListener('keydown', function (e) {

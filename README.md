@@ -8,7 +8,9 @@ Você abre o mesmo link nos dois aparelhos e pronto: o que digitar em um aparece
 - É um único arquivo HTML estático — não precisa de servidor próprio nem banco de dados.
 - As mensagens trafegam pelo [ntfy.sh](https://ntfy.sh), um serviço público e gratuito de mensagens em tempo real.
 - Cada "canal" é um código secreto aleatório (ex.: `txt-a8k2j...`) que fica no link. Quem tem o link, participa do canal — funciona como uma senha.
-- As mensagens ficam guardadas no ntfy.sh por **~12 horas** e depois somem.
+- As mensagens de texto ficam guardadas no ntfy.sh por **~12 horas** e depois somem.
+- **Imagens e documentos** também funcionam: use o botão 📎. Limites do servidor gratuito: **15 MB por arquivo** e o arquivo fica disponível por **~3 horas**. Imagens aparecem com preview; documentos, com botão "Baixar".
+- Dica iPhone: fotos da Fototeca podem ir no formato HEIC, que o navegador do PC não exibe — nesse caso o app mostra o cartão do arquivo com "Baixar" em vez do preview. Para evitar, tire a foto pela opção de câmera do 📎 ou converta para JPEG.
 
 ## Hospedagem gratuita
 
