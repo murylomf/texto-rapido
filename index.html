@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#4f46e5">
+<title>Texto Rápido — celular → PC</title>
+<script src="qrcode.min.js"></script>
+<style>
+  :root {
+    --bg: #f4f4f8;
+    --card: #ffffff;
+    --text: #1a1a2e;
+    --muted: #6b7280;
+    --accent: #4f46e5;
+    --accent-text: #ffffff;
+    --mine: #e0e7ff;
+    --border: #e5e7eb;
+    --ok: #16a34a;
+    --warn: #d97706;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #111118;
+      --card: #1c1c26;
+      --text: #ececf1;
+      --muted: #9ca3af;
+      --accent: #6366f1;
+      --mine: #2d2d52;
+      --border: #2e2e3d;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    display: flex;
+    flex-direction: column;
+  }
+  header {
+    background: var(--card);
+    border-bottom: 1px solid var(--border);
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  header h1 { font-size: 1.05rem; margin: 0; flex: 1; white-space: nowrap; }
+  #status {
+    font-size: 0.78rem;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  #status .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--warn);
+    display: inline-block;
+  }
+  #status.online .dot { background: var(--ok); }
+  header button {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-size: 0.8rem;
+    cursor: pointer;
+  }
+  header button:hover { border-color: var(--accent); }
+
+  #pairing {
+    background: var(--card);
+    border-bottom: 1px solid var(--border);
+    padding: 16px;
+    text-align: center;
+  }
+  #pairing.hidden { display: none; }
+  #pairing p { margin: 6px 0; font-size: 0.9rem; color: var(--muted); }
+  #qr { margin: 10px auto; }
+  #qr img, #qr svg { border-radius: 8px; background: #fff; padding: 8px; max-width: 180px; height: auto; }
+  #link-box {
+    display: flex;
+    gap: 6px;
+    justify-content: center;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-top: 6px;
+  }
+  #link-box input {
+    width: min(420px, 90%);
+    padding: 8px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 0.8rem;
+  }
+
+  main {
+    flex: 1;
+    overflow-y: auto;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .empty-hint {
+    margin: auto;
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.9rem;
+    line-height: 1.6;
+  }
+  .msg {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 10px 12px;
+    max-width: 92%;
+    align-self: flex-start;
+    animation: pop .15s ease-out;
+  }
+  .msg.mine { background: var(--mine); align-self: flex-end; }
+  @keyframes pop { from { transform: scale(.97); opacity: .5; } }
+  .msg .text {
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-size: 0.95rem;
+    line-height: 1.45;
+  }
+  .msg .meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 6px;
+  }
+  .msg .time { font-size: 0.7rem; color: var(--muted); flex: 1; }
+  .msg .copy {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    border-radius: 6px;
+    padding: 3px 8px;
+    font-size: 0.72rem;
+    cursor: pointer;
+  }
+  .msg .copy:hover { color: var(--accent); border-color: var(--accent); }
+  .msg .copy.done { color: var(--ok); border-color: var(--ok); }
+
+  footer {
+    background: var(--card);
+    border-top: 1px solid var(--border);
+    padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+    display: flex;
+    gap: 8px;
+    align-items: flex-end;
+  }
+  footer textarea {
+    flex: 1;
+    resize: none;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--bg);
+    color: var(--text);
+    padding: 10px;
+    font-size: 1rem;
+    font-family: inherit;
+    max-height: 140px;
+  }
+  footer textarea:focus { outline: 2px solid var(--accent); border-color: transparent; }
+  #send {
+    background: var(--accent);
+    color: var(--accent-text);
+    border: none;
+    border-radius: 10px;
+    padding: 10px 18px;
+    font-size: 1rem;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  #send:disabled { opacity: .5; cursor: default; }
+</style>
+</head>
+<body>
+  <header>
+    <h1>📋 Texto Rápido</h1>
+    <span id="status"><span class="dot"></span><span id="status-text">conectando…</span></span>
+    <button id="toggle-pairing" title="Mostrar QR code para conectar outro aparelho">Conectar aparelho</button>
+    <button id="new-channel" title="Gera um novo código secreto (desconecta os aparelhos antigos)">Novo canal</button>
+  </header>
+
+  <div id="pairing" class="hidden">
+    <p><strong>Abra este link no outro aparelho</strong> (escaneie o QR com a câmera do iPhone):</p>
+    <div id="qr"></div>
+    <div id="link-box">
+      <input id="share-link" readonly>
+      <button id="copy-link">Copiar link</button>
+    </div>
+    <p>No iPhone: depois de abrir, use <em>Compartilhar → Adicionar à Tela de Início</em> para virar um "app".</p>
+  </div>
+
+  <main id="messages">
+    <div class="empty-hint" id="empty-hint">
+      Nenhuma mensagem ainda.<br>
+      Digite algo abaixo — aparece na hora em todos os aparelhos conectados a este canal.<br>
+      As mensagens ficam disponíveis por ~12 horas.
+    </div>
+  </main>
+
+  <footer>
+    <textarea id="input" rows="1" placeholder="Digite o texto…"></textarea>
+    <button id="send">Enviar</button>
+  </footer>
+
+<script>
+(function () {
+  'use strict';
+
+  var SERVER = 'https://ntfy.sh';
+  var STORAGE_KEY = 'textorapido-topic';
+
+  // ---- canal (tópico secreto) ----
+  function randomTopic() {
+    var chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+    var s = '';
+    var buf = new Uint8Array(20);
+    crypto.getRandomValues(buf);
+    for (var i = 0; i < buf.length; i++) s += chars[buf[i] % chars.length];
+    return 'txt-' + s;
+  }
+
+  function topicFromHash() {
+    var m = location.hash.match(/c=([A-Za-z0-9_-]+)/);
+    return m ? m[1] : null;
+  }
+
+  var topic = topicFromHash() || localStorage.getItem(STORAGE_KEY) || randomTopic();
+  localStorage.setItem(STORAGE_KEY, topic);
+  history.replaceState(null, '', '#c=' + topic);
+
+  var shareUrl = location.origin + location.pathname + '#c=' + topic;
+
+  // ---- elementos ----
+  var $messages = document.getElementById('messages');
+  var $emptyHint = document.getElementById('empty-hint');
+  var $input = document.getElementById('input');
+  var $send = document.getElementById('send');
+  var $status = document.getElementById('status');
+  var $statusText = document.getElementById('status-text');
+  var $pairing = document.getElementById('pairing');
+
+  // ---- painel de pareamento / QR ----
+  document.getElementById('share-link').value = shareUrl;
+  try {
+    var qr = qrcode(0, 'M');
+    qr.addData(shareUrl);
+    qr.make();
+    document.getElementById('qr').innerHTML = qr.createImgTag(5, 8);
+  } catch (e) {
+    document.getElementById('qr').textContent = '';
+  }
+
+  document.getElementById('toggle-pairing').addEventListener('click', function () {
+    $pairing.classList.toggle('hidden');
+  });
+  document.getElementById('copy-link').addEventListener('click', function () {
+    navigator.clipboard.writeText(shareUrl);
+    this.textContent = 'Copiado!';
+    var btn = this;
+    setTimeout(function () { btn.textContent = 'Copiar link'; }, 1500);
+  });
+  document.getElementById('new-channel').addEventListener('click', function () {
+    if (!confirm('Gerar um novo canal? Os aparelhos conectados ao canal atual vão parar de receber.')) return;
+    localStorage.setItem(STORAGE_KEY, randomTopic());
+    location.hash = '';
+    location.reload();
+  });
+
+  // se nunca recebeu nada e acabou de criar o canal, mostra o pareamento
+  if (!topicFromHash() || localStorage.getItem('textorapido-paired-' + topic) !== '1') {
+    $pairing.classList.remove('hidden');
+  }
+
+  // ---- mensagens ----
+  var seen = {};      // ids já exibidos
+  var mine = {};      // ids enviados por este aparelho
+  var elById = {};    // id -> elemento na tela
+
+  function fmtTime(unixSec) {
+    var d = new Date(unixSec * 1000);
+    return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  }
+
+  function addMessage(id, text, timeSec, isMine) {
+    if (id && seen[id]) return;
+    if (id) seen[id] = true;
+    $emptyHint.style.display = 'none';
+    localStorage.setItem('textorapido-paired-' + topic, '1');
+
+    var div = document.createElement('div');
+    div.className = 'msg' + (isMine ? ' mine' : '');
+
+    var textEl = document.createElement('div');
+    textEl.className = 'text';
+    textEl.textContent = text;
+
+    var meta = document.createElement('div');
+    meta.className = 'meta';
+    var time = document.createElement('span');
+    time.className = 'time';
+    time.textContent = fmtTime(timeSec);
+    var copy = document.createElement('button');
+    copy.className = 'copy';
+    copy.textContent = 'Copiar';
+    copy.addEventListener('click', function () {
+      navigator.clipboard.writeText(text).then(function () {
+        copy.textContent = 'Copiado ✓';
+        copy.classList.add('done');
+        setTimeout(function () {
+          copy.textContent = 'Copiar';
+          copy.classList.remove('done');
+        }, 1500);
+      });
+    });
+    meta.appendChild(time);
+    meta.appendChild(copy);
+
+    div.appendChild(textEl);
+    div.appendChild(meta);
+    if (id) elById[id] = div;
+    $messages.appendChild(div);
+    $messages.scrollTop = $messages.scrollHeight;
+
+    // notificação no PC quando a aba está em segundo plano
+    if (!isMine && document.hidden && typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+      try { new Notification('Texto Rápido', { body: text.slice(0, 120) }); } catch (e) {}
+    }
+  }
+
+  // pede permissão de notificação de forma discreta no primeiro clique
+  document.body.addEventListener('click', function askNotif() {
+    document.body.removeEventListener('click', askNotif);
+    if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+  });
+
+  // ---- conexão em tempo real (SSE) ----
+  var es = null;
+  function connect() {
+    if (es) es.close();
+    es = new EventSource(SERVER + '/' + topic + '/sse?since=12h');
+    es.onopen = function () {
+      $status.classList.add('online');
+      $statusText.textContent = 'conectado';
+    };
+    es.onerror = function () {
+      $status.classList.remove('online');
+      $statusText.textContent = 'reconectando…';
+    };
+    es.onmessage = function (e) {
+      var data;
+      try { data = JSON.parse(e.data); } catch (err) { return; }
+      if (data.event !== 'message' || !data.message) return;
+      addMessage(data.id, data.message, data.time, !!mine[data.id]);
+    };
+  }
+  connect();
+
+  // ---- envio ----
+  function send() {
+    var text = $input.value.trim();
+    if (!text) return;
+    $send.disabled = true;
+    fetch(SERVER + '/' + topic, { method: 'POST', body: text })
+      .then(function (r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      })
+      .then(function (data) {
+        mine[data.id] = true;
+        if (seen[data.id] && elById[data.id]) {
+          // o eco via SSE chegou antes da resposta do POST: só ajusta o estilo
+          elById[data.id].classList.add('mine');
+        } else {
+          addMessage(data.id, text, data.time || Math.floor(Date.now() / 1000), true);
+        }
+        $input.value = '';
+        autosize();
+      })
+      .catch(function () {
+        alert('Não foi possível enviar. Verifique a conexão e tente de novo.');
+      })
+      .then(function () {
+        $send.disabled = false;
+        $input.focus();
+      });
+  }
+
+  $send.addEventListener('click', send);
+  $input.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      send();
+    }
+  });
+
+  function autosize() {
+    $input.style.height = 'auto';
+    $input.style.height = Math.min($input.scrollHeight, 140) + 'px';
+  }
+  $input.addEventListener('input', autosize);
+})();
+</script>
+</body>
+</html>
