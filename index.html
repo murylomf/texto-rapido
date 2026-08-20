@@ -195,8 +195,7 @@
     display: none;
     align-items: center;
     justify-content: center;
-    background: rgba(79, 70, 229, .12);
-    backdrop-filter: blur(2px);
+    background: rgba(79, 70, 229, .14);
     pointer-events: none;
   }
   #drop-overlay.visible { display: flex; }
@@ -704,7 +703,8 @@
   // ---- arrastar e soltar (PC) ----
   var $overlay = document.getElementById('drop-overlay');
   var $footer = document.querySelector('footer');
-  var dragDepth = 0;
+  var dragTimer = null;
+  var dragging = false;
 
   function hasFiles(e) {
     var t = e.dataTransfer && e.dataTransfer.types;
@@ -714,28 +714,34 @@
   }
 
   function hideOverlay() {
-    dragDepth = 0;
+    clearTimeout(dragTimer);
+    if (!dragging) return;
+    dragging = false;
     $overlay.classList.remove('visible');
     $footer.classList.remove('dragging');
   }
 
-  window.addEventListener('dragenter', function (e) {
-    if (!hasFiles(e)) return;
-    e.preventDefault();
-    dragDepth++;
-    $overlay.classList.add('visible');
-    $footer.classList.add('dragging');
-  });
+  // o overlay se apaga sozinho: enquanto o arquivo esta sobre a janela o
+  // dragover se repete (~350ms); se parar de chegar — arrasto cancelado, saiu
+  // da janela, soltou fora — o timer limpa a tela em vez de deixar tudo preso
+  function showOverlay() {
+    if (!dragging) {
+      dragging = true;
+      $overlay.classList.add('visible');
+      $footer.classList.add('dragging');
+    }
+    clearTimeout(dragTimer);
+    dragTimer = setTimeout(hideOverlay, 1000);
+  }
+
   window.addEventListener('dragover', function (e) {
     if (!hasFiles(e)) return;
     e.preventDefault(); // sem isso o navegador abre o arquivo em vez de soltar aqui
     e.dataTransfer.dropEffect = 'copy';
+    showOverlay();
   });
-  window.addEventListener('dragleave', function (e) {
-    if (!hasFiles(e)) return;
-    dragDepth--;
-    if (dragDepth <= 0) hideOverlay();
-  });
+  window.addEventListener('dragend', hideOverlay);
+  window.addEventListener('blur', hideOverlay);
   window.addEventListener('drop', function (e) {
     e.preventDefault();
     hideOverlay();
