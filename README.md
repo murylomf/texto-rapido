@@ -9,7 +9,11 @@ Você abre o mesmo link nos dois aparelhos e pronto: o que digitar em um aparece
 - As mensagens trafegam pelo [ntfy.sh](https://ntfy.sh), um serviço público e gratuito de mensagens em tempo real.
 - Cada "canal" é um código secreto aleatório (ex.: `txt-a8k2j...`) que fica no link. Quem tem o link, participa do canal — funciona como uma senha.
 - As mensagens de texto ficam guardadas no ntfy.sh por **~12 horas** e depois somem.
-- **Imagens e documentos** também funcionam: use o botão 📎. Limites do servidor gratuito: **15 MB por arquivo** e o arquivo fica disponível por **~3 horas**. Imagens aparecem com preview; documentos, com botão "Baixar".
+- **Imagens e documentos** também funcionam, de três jeitos:
+  - **Botão 📎** — escolhe da Fototeca, Câmera ou app Arquivos.
+  - **Colar** — `Ctrl+V` no PC ou **Colar** no iPhone envia a imagem da área de transferência direto (ótimo para print de tela). Colar texto continua colando texto normalmente.
+  - **Arrastar e soltar** (PC) — solte o arquivo em qualquer lugar da janela; vários arquivos de uma vez entram numa fila.
+  - Limites do servidor gratuito: **15 MB por arquivo**, disponível por **~3 horas**. Imagens aparecem com preview; documentos, com botão "Baixar".
 - Dica iPhone: fotos da Fototeca podem ir no formato HEIC, que o navegador do PC não exibe — nesse caso o app mostra o cartão do arquivo com "Baixar" em vez do preview. Para evitar, tire a foto pela opção de câmera do 📎 ou converta para JPEG.
 
 ## Hospedagem gratuita
@@ -30,7 +34,7 @@ Você só precisa hospedar 2 arquivos: `index.html` e `qrcode.min.js`.
 2. Clique em **"Conectar aparelho"** e copie o link do canal.
 3. **No iPhone:** abra esse mesmo link (mande para você mesmo por e-mail/AirDrop uma única vez, ou digite).
 4. No iPhone, toque em **Compartilhar → Adicionar à Tela de Início** — vira um ícone de app, sem precisar abrir o Safari toda vez.
-5. Digite no celular → aparece no PC (e cada mensagem tem botão **Copiar**). Use 📎 para fotos e documentos.
+5. Digite no celular → aparece no PC (e cada mensagem tem botão **Copiar**). Para fotos e documentos: 📎, colar (Ctrl+V / Colar) ou arrastar o arquivo para a janela no PC.
 
 Dicas:
 

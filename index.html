@@ -188,6 +188,30 @@
   }
   #attach:hover { border-color: var(--accent); }
   #attach:disabled { opacity: .6; cursor: default; font-size: .8rem; }
+  #drop-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: rgba(79, 70, 229, .12);
+    backdrop-filter: blur(2px);
+    pointer-events: none;
+  }
+  #drop-overlay.visible { display: flex; }
+  #drop-overlay .box {
+    background: var(--card);
+    border: 2px dashed var(--accent);
+    border-radius: 16px;
+    padding: 28px 36px;
+    text-align: center;
+    font-size: 1.05rem;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, .25);
+  }
+  #drop-overlay .box .big { font-size: 2.2rem; display: block; margin-bottom: 8px; }
+  #drop-overlay .box small { color: var(--muted); font-size: .8rem; }
+  footer.dragging textarea { border-color: var(--accent); }
   .msg img.preview {
     display: block;
     max-width: 100%;
@@ -252,15 +276,23 @@
   <main id="messages">
     <div class="empty-hint" id="empty-hint">
       Nenhuma mensagem ainda.<br>
-      Digite algo abaixo (ou use 📎 para enviar imagem/documento) — aparece na hora em todos os aparelhos conectados.<br>
+      Digite abaixo, <strong>cole</strong> uma imagem (Ctrl+V / Colar) ou <strong>arraste um arquivo</strong> para esta janela.<br>
       Texto fica disponível por ~12 h; arquivos, por ~3 h (limite de 15 MB).
     </div>
   </main>
 
+  <div id="drop-overlay">
+    <div class="box">
+      <span class="big">📥</span>
+      Solte o arquivo para enviar
+      <br><small>até 15 MB por arquivo</small>
+    </div>
+  </div>
+
   <footer>
     <button id="attach" title="Enviar imagem ou documento (até 15 MB)">📎</button>
-    <input type="file" id="file" hidden>
-    <textarea id="input" rows="1" placeholder="Digite o texto…"></textarea>
+    <input type="file" id="file" hidden multiple>
+    <textarea id="input" rows="1" placeholder="Digite, cole ou arraste um arquivo…"></textarea>
     <button id="send">Enviar</button>
   </footer>
 
@@ -545,20 +577,41 @@
     return out.slice(-100) || 'arquivo';
   }
 
-  function uploadFile(f) {
+  // imagem colada vem sem nome útil ("image.png", "blob" ou vazio) — gera um legível
+  function nameFor(f) {
+    if (f.name && f.name !== 'image.png' && f.name !== 'blob') return f.name;
+    var ext = ((f.type || '').split('/')[1] || 'bin').split('+')[0];
+    if (ext === 'jpeg') ext = 'jpg';
+    var d = new Date();
+    function pad(n) { return n < 10 ? '0' + n : '' + n; }
+    var stamp = d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()) +
+                '-' + pad(d.getHours()) + pad(d.getMinutes()) + pad(d.getSeconds());
+    return 'colado-' + stamp + '.' + ext;
+  }
+
+  // fila: uploads acontecem um de cada vez para o botão mostrar um progresso só
+  var queue = [];
+  var uploading = false;
+
+  function showProgress(pct) {
+    $attach.textContent = queue.length ? pct + '% (+' + queue.length + ')' : pct + '%';
+  }
+
+  function uploadFile(f, done) {
     var xhr = new XMLHttpRequest();
     xhr.open('PUT', SERVER + '/' + topic);
-    xhr.setRequestHeader('Filename', sanitizeFilename(f.name));
+    xhr.setRequestHeader('Filename', sanitizeFilename(nameFor(f)));
     $attach.disabled = true;
-    $attach.textContent = '0%';
+    showProgress(0);
 
     function reset() {
       $attach.disabled = false;
       $attach.textContent = '📎';
+      done();
     }
 
     xhr.upload.onprogress = function (e) {
-      if (e.lengthComputable) $attach.textContent = Math.round(e.loaded / e.total * 100) + '%';
+      if (e.lengthComputable) showProgress(Math.round(e.loaded / e.total * 100));
     };
     xhr.onload = function () {
       reset();
@@ -584,16 +637,121 @@
     xhr.send(f);
   }
 
+  function processQueue() {
+    if (uploading || !queue.length) return;
+    uploading = true;
+    uploadFile(queue.shift(), function () {
+      uploading = false;
+      processQueue();
+    });
+  }
+
+  // ponto de entrada único para 📎, colar e arrastar-soltar
+  function sendFiles(files) {
+    var tooBig = [];
+    for (var i = 0; i < files.length; i++) {
+      var f = files[i];
+      if (!f || (!f.size && !f.type)) continue;
+      if (f.size > MAX_FILE) {
+        tooBig.push(nameFor(f) + ' (' + fmtSize(f.size) + ')');
+        continue;
+      }
+      queue.push(f);
+    }
+    if (tooBig.length) {
+      alert('O limite é 15 MB por arquivo. Ficaram de fora:\n' + tooBig.join('\n'));
+    }
+    processQueue();
+  }
+
   $attach.addEventListener('click', function () { $file.click(); });
   $file.addEventListener('change', function () {
-    var f = $file.files[0];
+    var files = $file.files;
+    if (files && files.length) sendFiles(files);
     $file.value = '';
-    if (!f) return;
-    if (f.size > MAX_FILE) {
-      alert('Arquivo muito grande (' + fmtSize(f.size) + '). O limite é 15 MB.');
+  });
+
+  // ---- colar (Ctrl+V no PC, "Colar" no iPhone) ----
+  function handlePaste(e) {
+    var cd = e.clipboardData || window.clipboardData;
+    if (!cd) return;
+
+    var files = [];
+    if (cd.files && cd.files.length) {
+      for (var i = 0; i < cd.files.length; i++) files.push(cd.files[i]);
+    } else if (cd.items) {
+      for (var j = 0; j < cd.items.length; j++) {
+        if (cd.items[j].kind === 'file') {
+          var f = cd.items[j].getAsFile();
+          if (f) files.push(f);
+        }
+      }
+    }
+
+    if (files.length) {
+      e.preventDefault(); // não deixa o navegador colar o arquivo como texto
+      sendFiles(files);
+    }
+    // sem arquivos: deixa o texto ser colado normalmente no campo
+  }
+
+  $input.addEventListener('paste', handlePaste);
+  // também captura o Ctrl+V quando o campo não está focado (PC)
+  document.addEventListener('paste', function (e) {
+    if (e.target !== $input) handlePaste(e);
+  });
+
+  // ---- arrastar e soltar (PC) ----
+  var $overlay = document.getElementById('drop-overlay');
+  var $footer = document.querySelector('footer');
+  var dragDepth = 0;
+
+  function hasFiles(e) {
+    var t = e.dataTransfer && e.dataTransfer.types;
+    if (!t) return false;
+    for (var i = 0; i < t.length; i++) if (t[i] === 'Files') return true;
+    return false;
+  }
+
+  function hideOverlay() {
+    dragDepth = 0;
+    $overlay.classList.remove('visible');
+    $footer.classList.remove('dragging');
+  }
+
+  window.addEventListener('dragenter', function (e) {
+    if (!hasFiles(e)) return;
+    e.preventDefault();
+    dragDepth++;
+    $overlay.classList.add('visible');
+    $footer.classList.add('dragging');
+  });
+  window.addEventListener('dragover', function (e) {
+    if (!hasFiles(e)) return;
+    e.preventDefault(); // sem isso o navegador abre o arquivo em vez de soltar aqui
+    e.dataTransfer.dropEffect = 'copy';
+  });
+  window.addEventListener('dragleave', function (e) {
+    if (!hasFiles(e)) return;
+    dragDepth--;
+    if (dragDepth <= 0) hideOverlay();
+  });
+  window.addEventListener('drop', function (e) {
+    e.preventDefault();
+    hideOverlay();
+    var dt = e.dataTransfer;
+    if (!dt) return;
+    if (dt.files && dt.files.length) {
+      sendFiles(dt.files);
       return;
     }
-    uploadFile(f);
+    // arrastou um trecho de texto: joga no campo em vez de ignorar
+    var text = dt.getData ? dt.getData('text') : '';
+    if (text) {
+      $input.value = $input.value ? $input.value + '\n' + text : text;
+      autosize();
+      $input.focus();
+    }
   });
 
   $send.addEventListener('click', send);
